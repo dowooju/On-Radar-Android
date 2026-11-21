@@ -28,7 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onradar.todak.BuildConfig
@@ -107,6 +109,7 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     containerColor: Color = TodakColors.Primary,
+    textStyle: TextStyle = MaterialTheme.typography.labelLarge,
 ) {
     Button(
         onClick = onClick,
@@ -121,7 +124,7 @@ fun PrimaryButton(
         ),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+        Text(text, style = textStyle, textAlign = TextAlign.Center)
     }
 }
 
@@ -163,59 +166,30 @@ fun ChoiceButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    minHeight: Dp = TodakDimens.ChoiceButtonHeight,
+    compact: Boolean = false, // true면 그림을 줄이고 위아래 여백을 줄여 72dp 높이에 맞춤
 ) {
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = TodakDimens.ChoiceButtonHeight),
+            .heightIn(min = minHeight),
         shape = ButtonShape,
         border = BorderStroke(3.dp, color),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = containerColor,
             contentColor = TodakColors.OnSurface,
         ),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = if (compact) 2.dp else 8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(emoji, fontSize = 36.sp)
+            Text(emoji, fontSize = if (compact) 26.sp else 36.sp, lineHeight = if (compact) 30.sp else 44.sp)
             Spacer(Modifier.width(20.dp))
             Text(label, style = MaterialTheme.typography.titleLarge, color = color)
-        }
-    }
-}
-
-/**
- * 선택지 타일 (그림 위, 글자 아래). 선택지가 4개라 한 줄 버튼으로는 화면에 다 안 들어갈 때 2×2로 씁니다.
- * 버튼 높이는 72dp 원칙보다 큰 96dp 이상.
- */
-@Composable
-fun ChoiceTile(
-    emoji: String,
-    label: String,
-    color: Color,
-    containerColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 96.dp),
-        shape = ButtonShape,
-        border = BorderStroke(3.dp, color),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = containerColor,
-            contentColor = TodakColors.OnSurface,
-        ),
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            Text(emoji, fontSize = 26.sp, lineHeight = 30.sp, maxLines = 1)
-            Text(label, style = MaterialTheme.typography.titleLarge, maxLines = 1, color = color, textAlign = TextAlign.Center)
         }
     }
 }
@@ -244,7 +218,6 @@ fun SessionBadge(isMorning: Boolean) {
         style = MaterialTheme.typography.bodyLarge,
         color = color,
         modifier = Modifier
-            .padding(bottom = 8.dp)
             .background(container, RoundedCornerShape(50))
             .padding(horizontal = 20.dp, vertical = 6.dp),
     )

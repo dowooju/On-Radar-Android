@@ -2,17 +2,16 @@ package com.onradar.todak.ui.senior.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,7 +19,6 @@ import androidx.lifecycle.viewModelScope
 import com.onradar.todak.BuildConfig
 import com.onradar.todak.core.designsystem.PrimaryButton
 import com.onradar.todak.core.designsystem.ScreenTitle
-import com.onradar.todak.core.designsystem.SecondaryButton
 import com.onradar.todak.core.designsystem.SessionBadge
 import com.onradar.todak.core.designsystem.TodakColors
 import com.onradar.todak.core.designsystem.TodakScaffold
@@ -44,8 +42,8 @@ import java.time.format.DateTimeParseException
 /** 홈에서 지금 보여줄 "할 일 하나". 미응답·위험 판단은 하지 않고 서버의 status·opensAt만 따릅니다. */
 sealed interface HomeAction {
     data class DoCheck(val session: Session) : HomeAction
-    /** 체크를 마친 뒤: [이야기 나누기] + 다음 체크 일정 */
-    data class Talk(val checkId: Long, val session: Session, val nextGuide: String?) : HomeAction
+    /** 체크를 마친 뒤: "오늘 체크를 마쳤어요" + 큰 [이야기 나누기] */
+    data class Talk(val checkId: Long, val session: Session) : HomeAction
     /** 할 수 있는 체크가 아직 없음 (예: 아침을 놓쳤고 저녁은 아직 안 열림) */
     data class Wait(val nextGuide: String?) : HomeAction
 }
@@ -94,10 +92,10 @@ class HomeViewModel(private val repository: TodakRepository) : ViewModel() {
         return when {
             isOpen(evening) -> HomeAction.DoCheck(Session.EVENING)
             evening.status == CheckStatus.DONE && evening.checkId != null ->
-                HomeAction.Talk(evening.checkId, Session.EVENING, "다음 체크는 내일 아침이에요")
+                HomeAction.Talk(evening.checkId, Session.EVENING)
             isOpen(morning) -> HomeAction.DoCheck(Session.MORNING)
             morning.status == CheckStatus.DONE && morning.checkId != null ->
-                HomeAction.Talk(morning.checkId, Session.MORNING, guide(evening))
+                HomeAction.Talk(morning.checkId, Session.MORNING)
             else -> HomeAction.Wait(guide(evening))
         }
     }
@@ -169,29 +167,36 @@ private fun HomeContent(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Text("$displayName,\n안녕하세요", style = MaterialTheme.typography.displayLarge)
-        Spacer(Modifier.weight(1f))
 
         when (action) {
             is HomeAction.DoCheck -> {
-                val isMorning = action.session == Session.MORNING
-                SessionBadge(isMorning)
-                Text(
-                    if (isMorning) "오늘 아침 몸 상태를 알려 주세요" else "오늘 식사를 알려 주세요",
-                    style = MaterialTheme.typography.headlineMedium,
+                // 인사 바로 밑에 아침/저녁 표시, 그 아래 남은 화면을 [오늘 체크하기]가 꽉 채웁니다.
+                SessionBadge(action.session == Session.MORNING)
+                PrimaryButton(
+                    "오늘 체크하기",
+                    onClick = { onStartCheck(action.session) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = MaterialTheme.typography.displayLarge,
                 )
-                PrimaryButton("오늘 체크하기", onClick = { onStartCheck(action.session) })
             }
             is HomeAction.Talk -> {
-                // FCM 알림이 연결되기 전까지는 "알려 드릴게요"라고 약속하지 않고 일정만 안내합니다.
+                // 인사 바로 밑에 '오늘 체크를 마쳤어요'만, 그 아래 남은 화면을 [이야기 나누기]가 꽉 채웁니다.
                 Text(
-                    listOfNotNull("✅ 오늘 체크를 마쳤어요", action.nextGuide).joinToString("\n"),
+                    "✅ 오늘 체크를 마쳤어요",
                     style = MaterialTheme.typography.headlineMedium,
                     color = TodakColors.Done,
                 )
-                PrimaryButton("이야기 나누기", onClick = { onTalk(action.checkId, action.session) })
-                // 개발용: 낮에도 저녁 체크 흐름을 볼 수 있게 (가짜 데이터 모드에서만)
+                PrimaryButton(
+                    "이야기 나누기",
+                    onClick = { onTalk(action.checkId, action.session) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = MaterialTheme.typography.displayLarge,
+                )
+                // 개발용: 낮에도 저녁 체크 흐름을 볼 수 있게. debug + 시연 모드에서만 보이고 release에는 없습니다.
                 if (BuildConfig.DEBUG && BuildConfig.USE_MOCK && action.session == Session.MORNING) {
-                    SecondaryButton("[개발용] 저녁 체크 미리 보기", onClick = { onStartCheck(Session.EVENING) })
+                    TextButton(onClick = { onStartCheck(Session.EVENING) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("개발용 · 저녁 체크 미리 보기", color = TodakColors.OnSurfaceMuted, fontSize = 16.sp)
+                    }
                 }
             }
             is HomeAction.Wait -> {
@@ -202,13 +207,5 @@ private fun HomeContent(
             }
         }
         // callContact(가족 전화)는 가족 기능(TODO) 전까지 항상 null이라 [딸에게 전화하기]를 그리지 않습니다.
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "급할 땐 아래 빨간 버튼을 누르세요",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TodakColors.OnSurfaceMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }

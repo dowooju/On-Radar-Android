@@ -37,6 +37,8 @@ class FakeTodakRepository : TodakRepository {
 
     override suspend fun today(): Result<TodayResponse> {
         delay(300)
+        // 체크 시간 (11/21 팀 확정): 아침 08:00~11:00, 저녁 18:00~21:00.
+        // 실서버는 시간이 지나면 status=MISSED로 내려줍니다. 시연 모드는 언제든 흐름을 볼 수 있게 PENDING으로 둡니다.
         val eveningOpensAt = OffsetDateTime.of(LocalDate.now(), LocalTime.of(18, 0), kst).toString()
         return Result.success(
             TodayResponse(
