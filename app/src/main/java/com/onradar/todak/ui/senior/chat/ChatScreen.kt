@@ -56,7 +56,10 @@ fun ChatScreen(
                 vm.onMicUnavailable(
                     when (error) {
                         SpeechInput.SpeechError.NOT_AVAILABLE -> "이 폰에서는 목소리 듣기를 쓸 수 없어요"
+                        // 설정은 복지사가 도와드리는 것이 전제라, 어르신께는 짧게만 알립니다. (자세한 방법은 README)
+                        SpeechInput.SpeechError.NEED_GOOGLE_APP -> "목소리 듣기가 꺼져 있어요"
                         SpeechInput.SpeechError.NO_MATCH -> "목소리를 잘 못 들었어요"
+                        SpeechInput.SpeechError.NETWORK -> "인터넷이 연결되지 않아 목소리를 들을 수 없어요"
                         SpeechInput.SpeechError.OTHER -> "목소리 듣기가 잠깐 안 돼요"
                     },
                 )

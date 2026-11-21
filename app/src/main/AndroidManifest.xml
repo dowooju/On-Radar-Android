@@ -13,6 +13,8 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <!-- Google 앱이 꺼져 있는지 확인 (음성 인식이 Google 앱에 달려 있음) -->
+        <package android:name="com.google.android.googlequicksearchbox" />
     </queries>
 
     <application
