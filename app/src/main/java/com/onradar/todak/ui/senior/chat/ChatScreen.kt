@@ -1,6 +1,7 @@
 package com.onradar.todak.ui.senior.chat
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,9 +81,21 @@ fun ChatScreen(
     val startListening = {
         // 누른 즉시 "마이크를 준비하고 있어요"를 보여 주고, 준비 중에 또 눌러도 다시 시작하지 않습니다.
         if (vm.onMicPressed()) {
-            val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-                PackageManager.PERMISSION_GRANTED
-            if (granted) speech.start() else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            if (hasMicPermission(context)) speech.start() else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    // 대화 화면에 들어오자마자 마이크 권한을 물어 둡니다. 그래야 AI 질문이 끝났을 때 버튼 없이 바로 들을 수 있어요.
+    // (거절하면 자동 듣기는 하지 않고, [누르고 말씀하세요]를 누를 때 다시 묻습니다.)
+    val entryPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (!hasMicPermission(context)) entryPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    // AI가 질문을 다 읽으면 자동으로 듣기 시작. 말을 마치면 [다 말했어요] (또는 잠시 조용하면 자동 종료).
+    LaunchedEffect(state.autoListenTick) {
+        if (state.autoListenTick > 0 && state.phase == ChatPhase.READY && hasMicPermission(context)) {
+            startListening()
         }
     }
 
@@ -177,3 +190,6 @@ private fun StatusLine(text: String, showSpinner: Boolean = false) {
         Text(text, style = MaterialTheme.typography.titleLarge)
     }
 }
+
+private fun hasMicPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED

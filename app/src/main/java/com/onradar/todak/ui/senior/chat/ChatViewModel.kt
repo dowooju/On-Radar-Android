@@ -39,6 +39,11 @@ data class ChatUiState(
     val phase: ChatPhase = ChatPhase.PREPARING,
     val messages: List<ChatMessage> = emptyList(),
     val failReason: String? = null,
+    /**
+     * AI가 질문을 다 읽을 때마다 1씩 늘어납니다. 화면은 이 값이 바뀌면 버튼 없이 바로 듣기를 시작합니다.
+     * (어르신은 말하고 [다 말했어요]만 누르면 됨) 다른 이유로 READY가 될 때(도와주세요에서 돌아옴 등)는 늘지 않습니다.
+     */
+    val autoListenTick: Int = 0,
 )
 
 class ChatViewModel(
@@ -167,9 +172,13 @@ class ChatViewModel(
         }
         tts.speak(res.aiMessage) {
             // ended: true면 /end를 따로 부르지 않고 완료 화면으로 갑니다. (API 명세서)
+            // AI 목소리가 다 끝난 뒤에만 듣기를 켜야 AI 말소리가 어르신 말로 받아 적히지 않습니다.
             _state.update { s ->
-                if (s.phase != ChatPhase.AI_SPEAKING) s
-                else s.copy(phase = if (res.ended) ChatPhase.FINISHED else ChatPhase.READY)
+                when {
+                    s.phase != ChatPhase.AI_SPEAKING -> s
+                    res.ended -> s.copy(phase = ChatPhase.FINISHED)
+                    else -> s.copy(phase = ChatPhase.READY, autoListenTick = s.autoListenTick + 1)
+                }
             }
         }
     }
